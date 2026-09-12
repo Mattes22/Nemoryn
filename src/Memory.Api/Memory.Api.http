@@ -1,0 +1,376 @@
+@Memory.Api_HostAddress = http://localhost:5022
+
+GET {{Memory.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/health/database
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/runtime/status
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/runtime/ai-connection
+Accept: application/json
+
+###
+
+PUT {{Memory.Api_HostAddress}}/runtime/ai-connection
+Content-Type: application/json
+
+{
+  "baseUrl": "http://192.168.1.2:11434",
+  "chatModel": "gpt-oss:20b",
+  "embeddingModel": "nomic-embed-text"
+}
+
+###
+
+GET {{Memory.Api_HostAddress}}/tools
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/tool-permission-profiles
+Accept: application/json
+
+###
+
+POST {{Memory.Api_HostAddress}}/conversations
+Content-Type: application/json
+
+{
+  "ownerId": "user-1",
+  "externalId": "chat-123",
+  "title": "First conversation"
+}
+
+###
+
+PUT {{Memory.Api_HostAddress}}/conversations/by-external-id/chat-123
+Content-Type: application/json
+
+{
+  "ownerId": "user-1",
+  "title": "First conversation"
+}
+
+###
+
+GET {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+###
+
+POST {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/messages
+Content-Type: application/json
+
+{
+  "role": "User",
+  "content": "I prefer dark mode.",
+  "externalId": "msg-1"
+}
+
+###
+
+GET {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/memories
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners/user-1/memories
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners/user-1/memory-audit?take=50
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners/user-1/tool-audit?take=50
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners/user-1/memory-review
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners/user-1/memory-export
+Accept: application/json
+
+###
+
+POST {{Memory.Api_HostAddress}}/owners/user-1/memory-import
+Content-Type: application/json
+
+{
+  "dryRun": true,
+  "skipDuplicates": true,
+  "pinExplicit": false,
+  "document": {
+    "format": "memory.profile.v1",
+    "exportedAt": "2026-09-10T00:00:00Z",
+    "ownerId": "user-1",
+    "policy": "Balanced",
+    "conversations": [],
+    "memories": [],
+    "candidates": [],
+    "conflicts": [],
+    "audit": {
+      "exportedCount": 0,
+      "byAction": [],
+      "lastOccurredAt": null,
+      "recent": []
+    }
+  }
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/owners/user-1/memories/cleanup-preview
+Accept: application/json
+
+###
+
+POST {{Memory.Api_HostAddress}}/owners/user-1/memories/cleanup-apply
+Content-Type: application/json
+
+{
+  "memoryIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ]
+}
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners/user-1/memory-candidates
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners/user-1/memory-conflicts
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/owners/user-1/ingestion-jobs?take=50
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/memory-candidates
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/memory-conflicts
+Accept: application/json
+
+###
+
+GET {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/ingestion-jobs?take=50
+Accept: application/json
+
+###
+
+POST {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/memories/search
+Content-Type: application/json
+
+{
+  "query": "What UI theme does the user prefer?",
+  "limit": 5
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/context
+Content-Type: application/json
+
+{
+  "query": "What should I remember about this user?",
+  "limit": 8,
+  "includeSourceTrace": true
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/agent/prepare
+Content-Type: application/json
+
+{
+  "userMessage": "What should we cook tonight?",
+  "limit": 8,
+  "recentMessageCount": 12
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/agent/chat
+Content-Type: application/json
+
+{
+  "message": "What should you remember about my preferences?",
+  "memoryLimit": 8,
+  "recentMessageCount": 12
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/conversations/00000000-0000-0000-0000-000000000000/agent/chat
+Content-Type: application/json
+
+{
+  "message": "Zavolej echo_http, pokud ho tah povolí.",
+  "memoryLimit": 8,
+  "recentMessageCount": 12,
+  "permissionProfile": "NetworkOnce"
+}
+
+###
+
+GET {{Memory.Api_HostAddress}}/v1/models
+Accept: application/json
+Authorization: Bearer change-me
+
+###
+
+POST {{Memory.Api_HostAddress}}/v1/chat/completions
+Content-Type: application/json
+Authorization: Bearer change-me
+X-OpenWebUI-User-Id: matej
+X-OpenWebUI-Chat-Id: openai-webui-1
+
+{
+  "model": "gpt-oss:20b",
+  "stream": false,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Jak se jmenuju?"
+    }
+  ]
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/v1/chat/completions
+Content-Type: application/json
+Authorization: Bearer change-me
+X-OpenWebUI-User-Name: matej
+X-OpenWebUI-Chat-Id: openai-webui-1
+
+{
+  "model": "gpt-oss:20b",
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Kde bydlím?"
+    }
+  ]
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "gpt-oss:20b",
+  "stream": false,
+  "user": "matej",
+  "conversation_id": "openai-webui-1",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Jak se jmenuju?"
+    }
+  ]
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/v1/chat/completions
+Content-Type: application/json
+
+{
+  "model": "gpt-oss:20b",
+  "stream": false,
+  "metadata": {
+    "owner_id": "matej",
+    "conversation_id": "openai-webui-1"
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Kde bydlím?"
+    }
+  ]
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/memories
+Content-Type: application/json
+
+{
+  "conversationId": "00000000-0000-0000-0000-000000000000",
+  "content": "User prefers dark mode.",
+  "type": "Preference",
+  "scope": "User",
+  "importance": 0.9,
+  "confidence": 0.95,
+  "pin": true
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/memory-candidates/00000000-0000-0000-0000-000000000000/promote
+Content-Type: application/json
+
+{
+  "pin": false
+}
+
+###
+
+POST {{Memory.Api_HostAddress}}/memory-candidates/00000000-0000-0000-0000-000000000000/reject
+
+###
+
+POST {{Memory.Api_HostAddress}}/memory-conflicts/00000000-0000-0000-0000-000000000000/accept-candidate
+
+###
+
+POST {{Memory.Api_HostAddress}}/memory-conflicts/00000000-0000-0000-0000-000000000000/keep-existing
+
+###
+
+POST {{Memory.Api_HostAddress}}/memories/00000000-0000-0000-0000-000000000000/pin
+
+###
+
+PUT {{Memory.Api_HostAddress}}/memories/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "content": "User prefers dark mode on all devices.",
+  "pin": true
+}
+
+###
+
+DELETE {{Memory.Api_HostAddress}}/memories/00000000-0000-0000-0000-000000000000

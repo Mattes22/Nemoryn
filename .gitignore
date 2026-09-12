@@ -1,0 +1,9 @@
+bin/
+obj/
+**/bin/
+**/obj/
+.env
+**/memory-ai.connection.json
+**/memory-ai.connection.json.tmp
+**/memory-db.connection.json
+**/memory-db.connection.json.tmp

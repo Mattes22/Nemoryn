@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.git/
+**/.vs/
+**/.idea/
+**/.DS_Store
+**/memory-ai.connection.json
+**/memory-db.connection.json
+.env
+tests/
+*.user

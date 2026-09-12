@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#08090c">
+  <title>Nemoryn</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/console.css">
+</head>
+<body>
+  <a class="skip-link" href="#messages" data-i18n="skip">Skip to conversation</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8"></rect>
+        <path d="M8.5 23V9h3.4l8.1 11.2V9H23v14h-3.4L11.5 11.8V23H8.5Z"></path>
+        <circle cx="23" cy="9.2" r="2.3"></circle>
+      </svg>
+      <span class="brand-copy">
+        <strong>Nemoryn</strong>
+        <span data-i18n="brand.console">Console</span>
+      </span>
+    </div>
+
+    <form id="owner-form" class="owner-form">
+      <span class="owner-fields">
+        <select id="owner-pick" data-i18n-aria="owner.ariaPick" hidden>
+          <option value="" data-i18n="owner.existing">Existing…</option>
+        </select>
+        <input id="owner-id" name="ownerId" list="owner-options" autocomplete="off" spellcheck="false" data-i18n-placeholder="owner.placeholder" data-i18n-aria="owner.aria" placeholder="profile, e.g. matej">
+        <datalist id="owner-options"></datalist>
+      </span>
+      <button type="submit" data-i18n="owner.open">Open</button>
+    </form>
+
+    <div class="topbar-status">
+      <label class="locale-switch">
+        <span class="visually-hidden" data-i18n="locale.label">Language</span>
+        <select id="locale-select" data-i18n-aria="locale.label">
+          <option value="en">English</option>
+          <option value="cs">Čeština</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </label>
+      <button id="policy-chip" type="button" class="policy-chip" data-i18n-title="policy.title">Policy</button>
+      <button id="health" type="button" class="health" data-state="unknown" data-i18n-title="health.title">API</button>
+    </div>
+  </header>
+
+  <p id="banner" class="banner" hidden></p>
+
+  <main class="layout">
+    <aside class="pane pane-conversations">
+      <div class="pane-head">
+        <h1 data-i18n="conversations.title">Conversations</h1>
+        <button id="new-conversation" type="button" class="ghost" data-i18n="conversations.new">New</button>
+      </div>
+      <form id="new-conversation-form" class="new-conversation" hidden>
+        <input id="new-external-id" data-i18n-placeholder="conversations.externalId" placeholder="external id" autocomplete="off" spellcheck="false">
+        <input id="new-title" data-i18n-placeholder="conversations.titleOptional" placeholder="title (optional)" autocomplete="off">
+        <div class="row-actions">
+          <button type="submit" data-i18n="conversations.create">Create</button>
+          <button id="cancel-new-conversation" type="button" class="ghost" data-i18n="conversations.cancel">Cancel</button>
+        </div>
+      </form>
+      <ul id="conversation-list" class="list"></ul>
+    </aside>
+
+    <section class="pane pane-chat">
+      <div class="pane-head">
+        <div class="pane-head-copy">
+          <h1 id="chat-title">Conversations</h1>
+          <span id="chat-meta" class="muted"></span>
+        </div>
+      </div>
+      <div id="messages" class="messages"></div>
+      <form id="composer" class="composer">
+        <select id="message-role" data-i18n-aria="role.aria">
+          <option value="User" data-i18n="role.user">User</option>
+          <option value="Assistant" data-i18n="role.assistant">Assistant</option>
+          <option value="System" data-i18n="role.system">System</option>
+        </select>
+        <textarea id="message-content" rows="3" data-i18n-placeholder="composer.placeholder" placeholder="Write a message. Ingest runs in the background."></textarea>
+        <button type="submit" data-i18n="composer.send">Send</button>
+        <p class="composer-hint" data-i18n="composer.hint">Enter sends · Shift+Enter for a new line</p>
+      </form>
+    </section>
+
+    <section class="pane pane-memory">
+      <nav class="tabs" role="tablist" data-i18n-aria="nav.workspace">
+        <div class="nav-group">
+          <p class="nav-label" data-i18n="nav.memory">Memory</p>
+          <button type="button" class="tab is-active" data-tab="memories" role="tab" aria-selected="true" data-i18n="nav.memories">Memories</button>
+          <button type="button" class="tab" data-tab="candidates" role="tab" aria-selected="false">
+            <span data-i18n="nav.candidates">Candidates</span>
+            <span class="tab-count" data-count-for="candidates" hidden>0</span>
+          </button>
+          <button type="button" class="tab" data-tab="conflicts" role="tab" aria-selected="false">
+            <span data-i18n="nav.conflicts">Conflicts</span>
+            <span class="tab-count" data-count-for="conflicts" hidden>0</span>
+          </button>
+        </div>
+        <div class="nav-group">
+          <p class="nav-label" data-i18n="nav.ops">Operations</p>
+          <button type="button" class="tab" data-tab="ingestion" role="tab" aria-selected="false">
+            <span data-i18n="nav.ingestion">Ingest</span>
+            <span class="tab-count" data-count-for="ingestion" hidden>0</span>
+          </button>
+          <button type="button" class="tab" data-tab="audit" role="tab" aria-selected="false" data-i18n="nav.audit">Audit</button>
+          <button type="button" class="tab" data-tab="cleanup" role="tab" aria-selected="false" data-i18n="nav.cleanup">Cleanup</button>
+          <button type="button" class="tab" data-tab="backup" role="tab" aria-selected="false" data-i18n="nav.backup">Backup</button>
+        </div>
+        <div class="nav-group">
+          <p class="nav-label" data-i18n="nav.system">System</p>
+          <button type="button" class="tab" data-tab="policy" role="tab" aria-selected="false" data-i18n="nav.policy">Policy</button>
+          <button type="button" class="tab" data-tab="runtime" role="tab" aria-selected="false" data-i18n="nav.runtime">Runtime</button>
+          <button type="button" class="tab" data-tab="agent" role="tab" aria-selected="false" data-i18n="nav.agent">Agent</button>
+          <button type="button" class="tab" data-tab="eval" role="tab" aria-selected="false" data-i18n="nav.eval">Eval</button>
+        </div>
+      </nav>
+      <div class="workspace-body">
+        <div id="panel-memories" class="tab-panel" role="tabpanel"></div>
+        <div id="panel-candidates" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-conflicts" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-ingestion" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-audit" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-cleanup" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-eval" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-policy" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-backup" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-agent" class="tab-panel" role="tabpanel" hidden></div>
+        <div id="panel-runtime" class="tab-panel" role="tabpanel" hidden></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/i18n.js"></script>
+  <script src="/console.js"></script>
+</body>
+</html>

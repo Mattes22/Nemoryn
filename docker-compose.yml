@@ -1,0 +1,49 @@
+name: nemoryn
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nemoryn}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-nemoryn}
+    volumes:
+      - nemoryn-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nemoryn} -d ${POSTGRES_DB:-nemoryn}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+
+  nemoryn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: nemoryn:local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5022
+      NEMORYN_DATA_DIR: /app/data
+      ConnectionStrings__MemoryDatabase: Host=postgres;Port=5432;Database=${POSTGRES_DB:-nemoryn};Username=${POSTGRES_USER:-nemoryn};Password=${POSTGRES_PASSWORD:-change-me}
+      MemoryAi__Provider: ${MEMORY_AI_PROVIDER:-Ollama}
+      MemoryAi__BaseUrl: ${MEMORY_AI_BASE_URL:-http://192.168.1.2:11434}
+      MemoryAi__ChatModel: ${MEMORY_AI_CHAT_MODEL:-gpt-oss:20b}
+      MemoryAi__EmbeddingModel: ${MEMORY_AI_EMBEDDING_MODEL:-nomic-embed-text}
+      OpenAiCompatible__ApiKey: ${NEMORYN_API_KEY:-}
+    volumes:
+      - nemoryn-data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${NEMORYN_PORT:-5022}:5022"
+
+volumes:
+  nemoryn-pgdata:
+  nemoryn-data:
