@@ -29,7 +29,7 @@ PUT {{Memory.Api_HostAddress}}/runtime/ai-connection
 Content-Type: application/json
 
 {
-  "baseUrl": "http://192.168.1.2:11434",
+  "baseUrl": "http://localhost:11434",
   "chatModel": "gpt-oss:20b",
   "embeddingModel": "nomic-embed-text"
 }

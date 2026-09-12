@@ -16,6 +16,8 @@ Open WebUI: `http://localhost:5022/v1`
 ## Start
 
 ```bash
+git clone https://github.com/Mattes22/Nemoryn.git
+cd Nemoryn
 cp .env.example .env
 ```
 

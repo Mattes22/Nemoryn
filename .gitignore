@@ -2,6 +2,11 @@ bin/
 obj/
 **/bin/
 **/obj/
+.DS_Store
+**/.DS_Store
+.vs/
+.idea/
+*.user
 .env
 **/memory-ai.connection.json
 **/memory-ai.connection.json.tmp
