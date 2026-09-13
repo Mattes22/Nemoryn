@@ -33,6 +33,10 @@ const state = {
   databaseConnection: null,
   databaseConnectionDraft: null,
   databaseConnectionNotice: "",
+  toolsConnection: null,
+  toolsConnectionDraft: null,
+  toolsConnectionNotice: "",
+  toolsConnectionBusy: false,
   tools: [],
   permissionProfiles: [],
   permissionProfile: "Safe",
@@ -71,6 +75,7 @@ const els = {
   panelBackup: document.querySelector("#panel-backup"),
   panelAgent: document.querySelector("#panel-agent"),
   panelRuntime: document.querySelector("#panel-runtime"),
+  panelTools: document.querySelector("#panel-tools"),
   localeSelect: document.querySelector("#locale-select"),
 };
 
@@ -712,6 +717,7 @@ function renderWorkspace() {
   renderBackup();
   renderAgent();
   renderRuntime();
+  renderToolsSettings();
   updateTabCounts();
 }
 
@@ -1320,6 +1326,97 @@ async function loadDatabaseConnection() {
   state.databaseConnectionDraft = null;
 }
 
+function renderToolsSettings() {
+  if (!els.panelTools) {
+    return;
+  }
+
+  const connection = state.toolsConnection;
+  const draft = state.toolsConnectionDraft;
+  const busy = state.toolsConnectionBusy;
+  const baseUrl = draft?.searXngBaseUrl ?? connection?.searXngBaseUrl ?? "";
+  const persisted = connection?.persisted === true;
+  const configured = connection?.configured === true;
+  const reachable = connection?.reachable === true;
+  const notice = state.toolsConnectionNotice;
+  els.panelTools.innerHTML = `
+    <p class="muted">${escapeHtml(t("tools.intro"))}</p>
+    <div class="row-actions">
+      <button type="button" data-action="tools-refresh"${busy ? " disabled" : ""}>${busy ? t("tools.checking") : t("tools.refresh")}</button>
+    </div>
+    <form id="tools-connection-form" class="explicit-form runtime-connection">
+      <h2>${escapeHtml(t("tools.searxng.title"))}</h2>
+      <p class="muted">${t("tools.searxng.intro")}</p>
+      <label>
+        ${escapeHtml(t("tools.searxng.provider"))}
+        <input value="${escapeHtml(connection?.searchProvider || "SearXNG")}" disabled>
+      </label>
+      <label>
+        ${escapeHtml(t("tools.searxng.baseUrl"))}
+        <input name="searXngBaseUrl" type="text" spellcheck="false" autocomplete="off" placeholder="${escapeHtml(t("tools.searxng.placeholder"))}" value="${escapeHtml(baseUrl)}"${busy ? " disabled" : ""}>
+      </label>
+      ${configured && reachable ? `<p class="ok-text">${t("tools.ok")}</p>` : ""}
+      ${configured && !reachable ? `<p class="danger-text">${escapeHtml(connection?.reachError || t("tools.unreachable"))}</p>` : ""}
+      ${connection && !configured ? `<p class="muted">${t("tools.unconfigured")}</p>` : ""}
+      ${persisted ? `<p class="muted">${t("tools.persisted")}</p>` : connection ? `<p class="muted">${t("tools.fromConfig")}</p>` : `<p class="muted">${t("tools.empty")}</p>`}
+      ${connection?.persistError ? `<p class="danger-text">${escapeHtml(t("tools.persistError", { error: connection.persistError }))}</p>` : ""}
+      ${notice ? `<p class="ok-text">${escapeHtml(t(notice.key, notice.vars))}</p>` : ""}
+      <div class="row-actions">
+        <button type="submit"${busy ? " disabled" : ""}>${t("tools.searxng.save")}</button>
+      </div>
+    </form>
+  `;
+}
+
+function readToolsConnectionForm(form) {
+  const data = new FormData(form);
+  return {
+    searXngBaseUrl: String(data.get("searXngBaseUrl") || "").trim()
+  };
+}
+
+async function loadToolsConnection() {
+  if (state.toolsConnectionBusy) {
+    return;
+  }
+
+  state.toolsConnectionBusy = true;
+  renderToolsSettings();
+  try {
+    state.toolsConnection = await api("/runtime/tools-connection", { timeoutMs: 8000 });
+    state.toolsConnectionDraft = null;
+    state.toolsConnectionNotice = "";
+    showError("");
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    state.toolsConnectionBusy = false;
+    renderToolsSettings();
+  }
+}
+
+async function saveToolsConnection(request) {
+  state.toolsConnectionBusy = true;
+  renderToolsSettings();
+  try {
+    state.toolsConnection = await api("/runtime/tools-connection", {
+      method: "PUT",
+      body: JSON.stringify(request),
+      timeoutMs: 8000
+    });
+    state.toolsConnectionDraft = null;
+    state.toolsConnectionNotice = state.toolsConnection?.persisted
+      ? { key: "tools.savedPersisted" }
+      : { key: "tools.savedLive" };
+    showError("");
+  } catch (error) {
+    showError(error.message);
+  } finally {
+    state.toolsConnectionBusy = false;
+    renderToolsSettings();
+  }
+}
+
 async function currentAiConnectionRequest(overrides = {}) {
   const form = document.querySelector("#ai-connection-form");
   const fromForm = form ? readAiConnectionForm(form) : null;
@@ -1570,8 +1667,12 @@ function setTab(tab) {
   els.panelBackup.hidden = tab !== "backup";
   els.panelAgent.hidden = tab !== "agent";
   els.panelRuntime.hidden = tab !== "runtime";
+  els.panelTools.hidden = tab !== "tools";
   if (tab === "runtime") {
     loadRuntime();
+  }
+  if (tab === "tools") {
+    loadToolsConnection();
   }
 }
 
@@ -1854,6 +1955,48 @@ els.panelRuntime.addEventListener("click", async (event) => {
 
   if (button.dataset.action === "runtime-refresh" || button.dataset.action === "runtime-load-models") {
     await loadRuntime();
+  }
+});
+
+els.panelTools.addEventListener("input", (event) => {
+  const form = event.target.closest("#tools-connection-form");
+  if (!form) {
+    return;
+  }
+
+  state.toolsConnectionDraft = readToolsConnectionForm(form);
+});
+
+els.panelTools.addEventListener("change", (event) => {
+  const form = event.target.closest("#tools-connection-form");
+  if (!form) {
+    return;
+  }
+
+  state.toolsConnectionDraft = readToolsConnectionForm(form);
+});
+
+els.panelTools.addEventListener("submit", async (event) => {
+  if (event.target.id !== "tools-connection-form") {
+    return;
+  }
+
+  event.preventDefault();
+  if (state.toolsConnectionBusy) {
+    return;
+  }
+
+  await saveToolsConnection(readToolsConnectionForm(event.target));
+});
+
+els.panelTools.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-action]");
+  if (!button || state.toolsConnectionBusy) {
+    return;
+  }
+
+  if (button.dataset.action === "tools-refresh") {
+    await loadToolsConnection();
   }
 });
 

@@ -12,3 +12,5 @@ obj/
 **/memory-ai.connection.json.tmp
 **/memory-db.connection.json
 **/memory-db.connection.json.tmp
+**/memory-tools.connection.json
+**/memory-tools.connection.json.tmp

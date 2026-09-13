@@ -12,15 +12,16 @@ using Memory.Application.Abstractions.AI;
 using Memory.Application.Owners;
 using Memory.Application.Runtime;
 using Memory.Application.Tools;
+using Memory.Application.ToolsGateway;
 
 public static class DependencyInjection
 {
     public static IServiceCollection AddMemoryApplication(this IServiceCollection services)
     {
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<ITool, GetTimeTool>();
-        services.AddScoped<ITool, SearchMemoriesTool>();
-        services.AddScoped<IToolRegistry, ToolRegistry>();
+        services.AddSingleton<Memory.Application.Tools.ITool, GetTimeTool>();
+        services.AddScoped<Memory.Application.Tools.ITool, SearchMemoriesTool>();
+        services.AddScoped<Memory.Application.Tools.IToolRegistry, Memory.Application.Tools.ToolRegistry>();
         services.AddScoped<IToolAuditService, ToolAuditService>();
         services.AddScoped<IToolRuntime, ToolRuntime>();
         services.AddSingleton<MemoryPolicyRuntime>();
@@ -29,6 +30,8 @@ public static class DependencyInjection
         services.AddScoped<IChatModelResolver, ChatModelResolver>();
         services.AddScoped<IMemoryAiConnectionService, MemoryAiConnectionService>();
         services.AddScoped<IMemoryDatabaseConnectionService, MemoryDatabaseConnectionService>();
+        services.AddScoped<IToolsConnectionService, ToolsConnectionService>();
+        services.AddSingleton<ToolsConnectionRuntime>();
         services.AddSingleton<IRuntimeWorkerPulse, RuntimeWorkerPulse>();
         services.AddSingleton<AgentSystemPromptBuilder>();
         services.AddScoped<IConversationService, ConversationService>();
@@ -49,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<IRuntimeStatusService, RuntimeStatusService>();
         services.AddScoped<IMemoryService, MemoryService>();
         services.AddScoped<IMemoryIngestionService, MemoryIngestionService>();
+        services.AddNemorynToolsGateway();
 
         return services;
     }

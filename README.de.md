@@ -1,19 +1,115 @@
 # Nemoryn
 
-[English](README.md) | [Čeština](README.cs.md) | [Deutsch](README.de.md)
+[English](README.md) · [Čeština](README.cs.md) · [**Deutsch**](README.de.md)
 
-OpenAI-kompatibler Memory-Server. Postgres läuft in Docker. Das Chat-Modell (Ollama oder OpenAI) bringst du selbst mit.
+**Persistenter Speicher für KI-Assistenten.**
 
-Konsole: `http://localhost:5022/`  
-Open WebUI: `http://localhost:5022/v1`
+Nemoryn ist ein Backend zwischen Chat-Client und Modell. Es ist kein LLM. Du nutzt weiter Ollama oder einen anderen OpenAI-kompatiblen Provider. Nemoryn holt vor der Antwort passende Erinnerungen und aktualisiert das Langzeitgedächtnis danach.
 
-## Was du brauchst
+<p>
+  <img src="https://img.shields.io/badge/.NET-10-512BD4?style=flat-square" alt=".NET 10">
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square" alt="Docker Compose">
+  <img src="https://img.shields.io/badge/PostgreSQL-pgvector-336791?style=flat-square" alt="PostgreSQL pgvector">
+  <img src="https://img.shields.io/badge/API-OpenAI%20compatible-412991?style=flat-square" alt="OpenAI-compatible API">
+</p>
+
+```mermaid
+flowchart LR
+  C["Open WebUI<br/>oder anderer Client"] -->|OpenAI /v1| N["Nemoryn<br/>Memory · Tools"]
+  N --> DB[("PostgreSQL<br/>+ pgvector")]
+  N --> LLM["Ollama / OpenAI API"]
+```
+
+## Warum
+
+Die meisten Modelle kennen nur das aktuelle Kontextfenster. Ist das Fenster weg, ist auch das „Gedächtnis“ weg.
+
+Nemoryn hält Speicher **außerhalb** des Modells. Modell wechseln, Erinnerungen behalten.
+
+**Unterhaltung 1**
+
+> **Du:** Mein Ollama-Server läuft auf dem Mac mini.
+>
+> Nemoryn zieht das raus und speichert es als Langzeitgedächtnis.
+
+**Tage später · Unterhaltung 27**
+
+> **Du:** Wo habe ich den Ollama-Server hingestellt?
+>
+> Nemoryn sucht im Speicher und legt den Treffer in den Kontext.
+>
+> **Assistent:** Dein Ollama-Server läuft auf deinem Mac mini.
+
+## Was es kann
+
+- persistentes Langzeitgedächtnis
+- semantische Suche (Embeddings)
+- PostgreSQL + pgvector
+- Wichtigkeit, Konfidenz, Konflikte, Historie
+- OpenAI-kompatible `/v1`-API
+- Open WebUI als Chat-Client (kein Plugin-Host)
+- Tools Gateway (`web.search`, `web.fetch`)
+- Ollama und andere OpenAI-kompatible Provider
+
+Speicher, UI und LLM bleiben lose gekoppelt. Open WebUI ist ein Client. Nemoryn ist kein Open-WebUI-Plugin.
+
+## Ablauf einer Anfrage
+
+```mermaid
+sequenceDiagram
+  participant U as Du
+  participant C as Open WebUI
+  participant N as Nemoryn
+  participant M as Ollama / OpenAI
+
+  U->>C: Nachricht
+  C->>N: POST /v1/chat/completions
+  N->>N: Erinnerungen holen
+  N->>M: Prompt + Kontext
+  M->>N: Antwort
+  N->>N: neue Erinnerungen extrahieren
+  N->>C: Response
+  C->>U: Chat
+```
+
+Aus deiner Sicht chattest du einfach weiter in Open WebUI.
+
+## Architektur
+
+```mermaid
+flowchart TB
+  subgraph clients [Clients]
+    OWUI[Open WebUI]
+    APP[Eigene Apps]
+    MCP[MCP später]
+  end
+
+  subgraph nemoryn [Nemoryn]
+    API[API]
+    MEM[Memory Core]
+    TG[Tools Gateway]
+  end
+
+  OWUI --> API
+  APP --> API
+  MCP -.-> API
+  API --> MEM
+  API --> TG
+  MEM --> PG[("PostgreSQL + pgvector")]
+  API --> LLM[Ollama / OpenAI-compatible]
+  TG --> W["web.search · web.fetch"]
+```
+
+## Schnellstart
+
+**Du brauchst**
 
 - Docker Desktop (oder einen Daemon) mit `docker compose`
-- Ollama (oder eine OpenAI-kompatible API) mit Chat-Modell und Embedding-Modell
-- freien Port `5022`; Compose mappt Postgres auf Host-Port `5433`, damit es nicht mit lokalem `5432` kollidiert
+- Ollama oder eine OpenAI-kompatible API
+- Chat-Modell und Embedding-Modell
+- freien Port `5022`
 
-## Start
+Compose mappt Postgres auf Host-Port **5433**, damit es nicht mit lokalem `5432` kollidiert.
 
 ```bash
 git clone https://github.com/Mattes22/Nemoryn.git
@@ -36,9 +132,14 @@ Ollama auf einem anderen Rechner im LAN: `MEMORY_AI_BASE_URL=http://192.168.x.x:
 docker compose up --build -d
 ```
 
-Öffne `http://localhost:5022/`. Unter **Runtime** prüfe, ob Datenbank und Modell leben. In Docker ist der Datenbank-Host `postgres`, Port **`5432`** (nicht `5433`).
+Öffne [http://localhost:5022/](http://localhost:5022/). Unter **Runtime** prüfen, ob Datenbank und beide Modelle leben.
 
-Stoppen: `docker compose down`. Volumes löschst du nur mit `-v`.
+In Docker ist der Datenbank-Host `postgres`, Port **`5432`** (nicht `5433`). `5433` ist nur das Mapping auf den Mac.
+
+```bash
+docker compose down          # stoppen
+docker compose down -v       # stoppen und Volumes löschen
+```
 
 ## Open WebUI
 
@@ -47,14 +148,56 @@ Admin → Settings → Connections → OpenAI:
 | Feld | Wert |
 |---|---|
 | API Base URL | `http://127.0.0.1:5022/v1` |
-| API Key | beliebig, wenn `NEMORYN_API_KEY` leer ist; sonst derselbe String |
+| API Key | beliebig, wenn `NEMORYN_API_KEY` leer ist; sonst derselbe Schlüssel |
 
-Modell und Ollama-Base-URL setzt du in Nemoryn Runtime, nicht in Open WebUI.
+Chat-Modell und Ollama-URL setzt du in Nemoryn **Runtime**, nicht in Open WebUI. Danach chattest du wie gewohnt: Open WebUI spricht mit Nemoryn, Nemoryn mit dem Modell.
 
-## Gehört nicht hierher
+## Tools Gateway
 
-- Open WebUI ist kein Plugin-Host. Kandidaten, Konflikte, Pin und Audit gibt es nur in der Konsole.
-- Die Konsole hat kein Login. `5022` ohne Proxy/VPN nicht ins öffentliche Internet legen.
-- `.env` und `memory-*.connection.json` werden nicht committet.
+Unabhängig vom Memory Core. Gedacht für später Open WebUI, MCP und andere Agenten.
 
-Mehr zu Docker: `docs/docker.md`. Open WebUI: `docs/openwebui.md`.
+| Tool | Zweck |
+|---|---|
+| `web.search` | Volltextsuche im Web (SearXNG) |
+| `web.fetch` | öffentliche Seite → bereinigter Text (SSRF-sicher) |
+
+- API: [http://localhost:5022/api/v1/tools](http://localhost:5022/api/v1/tools)
+- OpenAPI: [http://localhost:5022/openapi/tools.json](http://localhost:5022/openapi/tools.json)
+- Konsole: **Tools** → SearXNG Base URL
+
+Details: [`docs/tools.md`](docs/tools.md)
+
+## Konsole
+
+[http://localhost:5022/](http://localhost:5022/) — Runtime, Erinnerungen, Kandidaten, Konflikte, Audit, Tools.
+
+Kein Login. `5022` nicht ohne Proxy/VPN ins öffentliche Internet legen.
+
+## Was Nemoryn nicht ist
+
+- **kein LLM** — du brauchst weiter Ollama oder einen anderen Provider
+- **kein Chat-UI** — Front-End ist Open WebUI (oder dein eigener Client)
+- **nicht an ein Modell gebunden** — Speicher bleibt beim Wechsel von Modell oder Client
+
+## Status
+
+Aktive Entwicklung. So geschnitten, dass die Memory-Engine Open WebUI, eigene Assistenten, lokale Agenten, MCP und andere OpenAI-kompatible Apps bedienen kann.
+
+Fokus jetzt: zuverlässiger Speicher, Retrieval und Tools.
+
+## Sicherheit
+
+- Die Konsole hat kein Login — `5022` nicht öffentlich machen
+- `.env` und `memory-*.connection.json` werden nicht committet
+- `web.fetch` blockiert Loopback, Link-Local und private Netze
+- Tools laufen über Capabilities
+
+## Dokumentation
+
+- [Docker](docs/docker.md)
+- [Open WebUI](docs/openwebui.md)
+- [Tools Gateway](docs/tools.md)
+
+## Mitwirken
+
+Open Source und noch im Aufbau. Bugreports, Ideen, Architektur-Notizen und PRs sind willkommen.

@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Memory.Api;
 using Memory.Api.OpenAi;
+using Memory.Api.ToolsGateway;
 using Memory.Application;
 using Memory.Application.Agent;
 using Memory.Application.Configuration;
@@ -19,6 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<MemoryExceptionHandler>();
 builder.Services.AddOpenApi();
+builder.Services.AddOpenApi("tools");
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -33,10 +35,7 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.MapOpenApi();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -114,6 +113,23 @@ app.MapPut("/runtime/database-connection", async (
     return Results.Ok(await connectionService.SetAsync(request, cancellationToken));
 })
     .WithName("SetRuntimeDatabaseConnection");
+
+app.MapGet("/runtime/tools-connection", async (
+    IToolsConnectionService connectionService,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await connectionService.GetAsync(cancellationToken));
+})
+    .WithName("GetRuntimeToolsConnection");
+
+app.MapPut("/runtime/tools-connection", async (
+    ToolsConnectionRequest request,
+    IToolsConnectionService connectionService,
+    CancellationToken cancellationToken) =>
+{
+    return Results.Ok(await connectionService.SetAsync(request, cancellationToken));
+})
+    .WithName("SetRuntimeToolsConnection");
 
 app.MapGet("/tools", (IToolRegistry toolRegistry) => Results.Ok(toolRegistry.Definitions))
     .WithName("GetTools");
@@ -465,6 +481,7 @@ app.MapPost("/conversations/{conversationId:guid}/agent/chat", async (
     .WithName("AgentChat");
 
 app.MapOpenAiCompatibleEndpoints();
+app.MapToolsGatewayEndpoints();
 
 app.MapPost("/memories", async (
     CreateMemoryRequest request,

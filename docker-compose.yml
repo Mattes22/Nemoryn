@@ -37,6 +37,7 @@ services:
       MemoryAi__ChatModel: ${MEMORY_AI_CHAT_MODEL:-gpt-oss:20b}
       MemoryAi__EmbeddingModel: ${MEMORY_AI_EMBEDDING_MODEL:-nomic-embed-text}
       OpenAiCompatible__ApiKey: ${NEMORYN_API_KEY:-}
+      Tools__Web__SearXNG__BaseUrl: ${TOOLS_SEARXNG_BASE_URL:-}
     volumes:
       - nemoryn-data:/app/data
     extra_hosts:

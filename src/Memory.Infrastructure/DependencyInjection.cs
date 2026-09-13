@@ -11,10 +11,12 @@ using Memory.Application.Abstractions.Persistence;
 using Memory.Application.Configuration;
 using Memory.Application.Runtime;
 using Memory.Application.Tools;
+using Memory.Application.ToolsGateway.Web;
 using Memory.Infrastructure.AI;
 using Memory.Infrastructure.Ingestion;
 using Memory.Infrastructure.Persistence;
 using Memory.Infrastructure.Retention;
+using Memory.Infrastructure.ToolsGateway;
 using Pgvector.EntityFrameworkCore;
 
 public static class DependencyInjection
@@ -32,8 +34,13 @@ public static class DependencyInjection
         services.AddSingleton<IMemoryDatabaseConnectionStore>(serviceProvider =>
             new FileMemoryDatabaseConnectionStore(
                 Path.Combine(ResolveDataDirectory(serviceProvider, configuration), FileMemoryDatabaseConnectionStore.FileName)));
+        services.AddSingleton<IToolsConnectionStore>(serviceProvider =>
+            new FileToolsConnectionStore(
+                Path.Combine(ResolveDataDirectory(serviceProvider, configuration), FileToolsConnectionStore.FileName)));
         services.AddSingleton(serviceProvider =>
             MemoryAiConnectionRuntime.FromStore(serviceProvider.GetRequiredService<IMemoryAiConnectionStore>()));
+        services.AddSingleton(serviceProvider =>
+            ToolsConnectionRuntime.FromStore(serviceProvider.GetRequiredService<IToolsConnectionStore>()));
         services.AddSingleton(serviceProvider =>
             MemoryDatabaseConnectionRuntime.Create(
                 serviceProvider.GetRequiredService<IMemoryDatabaseConnectionStore>(),
@@ -66,8 +73,49 @@ public static class DependencyInjection
         services.AddHostedService<MemoryRetentionHostedService>();
         AddMemoryAi(services, configuration);
         AddExternalHttpTools(services, configuration);
+        AddToolsGateway(services, configuration);
 
         return services;
+    }
+
+    private static void AddToolsGateway(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<ToolsOptions>()
+            .Bind(configuration.GetSection(ToolsOptions.SectionName))
+            .PostConfigure<ToolsConnectionRuntime>((options, runtime) => runtime.ApplyTo(options));
+
+        var searchProvider = configuration[$"{ToolsOptions.SectionName}:Web:SearchProvider"] ?? "SearXNG";
+        if (!string.IsNullOrWhiteSpace(searchProvider)
+            && !string.Equals(searchProvider, "SearXNG", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Unsupported Tools:Web:SearchProvider '{searchProvider}'. Supported: SearXNG.");
+        }
+
+        services.AddSingleton<IHostAddressResolver, DnsHostAddressResolver>();
+        services.AddScoped<IRawHttpFetcher, RawHttpFetcher>();
+        services.AddScoped<IWebSearchProvider, SearXngWebSearchProvider>();
+        services.AddSingleton<ISearXngReachabilityProbe, HttpSearXngReachabilityProbe>();
+
+        services.AddHttpClient(SearXngWebSearchProvider.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
+        services.AddHttpClient(HttpSearXngReachabilityProbe.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(2);
+        });
+
+        services.AddHttpClient(RawHttpFetcher.HttpClientName, (serviceProvider, client) =>
+        {
+            client.Timeout = serviceProvider.GetRequiredService<IOptions<ToolsOptions>>().Value.Web.Fetch.Timeout;
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(RawHttpFetcher.UserAgent);
+        }).ConfigurePrimaryHttpMessageHandler(serviceProvider =>
+        {
+            var timeout = serviceProvider.GetRequiredService<IOptions<ToolsOptions>>().Value.Web.Fetch.Timeout;
+            return PublicNetworkSockets.Create(timeout);
+        });
     }
 
     private static void AddExternalHttpTools(IServiceCollection services, IConfiguration configuration)
