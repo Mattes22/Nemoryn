@@ -8,6 +8,7 @@ using Memory.Application.Conversations;
 using Memory.Application.Memories;
 using Memory.Application.Tools;
 using Memory.Application.Tests.Fakes;
+using Memory.Application.ToolsGateway.Web;
 using Memory.Domain.Conversations;
 using Memory.Domain.Memories;
 using Memory.Domain.Tools;
@@ -132,6 +133,84 @@ public sealed class AgentToolLoopTests
         Assert.Equal(ToolAuditOutcome.Succeeded, audit.Outcome);
         Assert.Contains("User lives in Brno.", audit.Result, StringComparison.Ordinal);
         Assert.DoesNotContain(await store.GetRecentMessagesAsync(conversation.Id, 10), message => message.Role == MessageRole.Tool);
+    }
+
+    [Fact]
+    public async Task Chat_advertises_web_search_on_the_safe_profile()
+    {
+        var (_, conversation, memory, conversations) = CreateTurn();
+        var chatProvider = new FakeChatCompletionProvider { Response = "Ahoj." };
+        var chat = AgentChatHarness.Create(
+            conversations,
+            memory,
+            chatProvider,
+            tools:
+            [
+                new GetTimeTool(TimeProvider.System),
+                new WebSearchAgentTool(new FakeWebSearchProvider()),
+                new WebFetchAgentTool(new FakeWebContentFetcher())
+            ]);
+
+        var response = await chat.ChatAsync(
+            conversation.Id,
+            new AgentChatRequest("Ahoj", 8, 12));
+
+        Assert.Equal("Succeeded", response.Status);
+        Assert.Equal(ToolPermissionProfile.Safe, response.PermissionProfile);
+        Assert.Contains(chatProvider.LastRequest?.Tools ?? [], tool => tool.Name == WebSearchAgentTool.ToolName);
+        Assert.Contains(chatProvider.LastRequest?.Tools ?? [], tool => tool.Name == WebFetchAgentTool.ToolName);
+        Assert.Contains(
+            chatProvider.LastRequest?.Messages ?? [],
+            message => message.Role == "system"
+                && message.Content.Contains("call web_search before answering", StringComparison.Ordinal));
+        Assert.Empty(response.ToolTrace);
+    }
+
+    [Fact]
+    public async Task Chat_falls_back_to_web_search_when_the_model_skips_tools()
+    {
+        var (store, conversation, memory, conversations) = CreateTurn();
+        var provider = new FakeWebSearchProvider
+        {
+            Result = new WebSearchResult(
+                "Teuta Ganna",
+                "SearXNG",
+                [new WebSearchHit("Teuta Ganna", "https://example.com/teuta", "Public profile", "duckduckgo", 1)])
+        };
+        var chatProvider = new FakeChatCompletionProvider();
+        chatProvider.Completions.Enqueue(new ChatCompletionResponse(
+            "Omlouvám se, ale v dostupných zdrojích se nepodařilo nic najít."));
+        chatProvider.Completions.Enqueue(new ChatCompletionResponse(
+            "Teuta Ganna je podle webu veřejná osoba: https://example.com/teuta"));
+        var chat = AgentChatHarness.Create(
+            conversations,
+            memory,
+            chatProvider,
+            tools: [new WebSearchAgentTool(provider)],
+            store: store);
+
+        var response = await chat.ChatAsync(
+            conversation.Id,
+            new AgentChatRequest("Najdi mi informace o Teuta Ganna", 8, 12));
+
+        Assert.Equal("Succeeded", response.Status);
+        Assert.Equal(
+            "Teuta Ganna je podle webu veřejná osoba: https://example.com/teuta",
+            response.AssistantMessage?.Content);
+        var trace = Assert.Single(response.ToolTrace);
+        Assert.Equal(WebSearchAgentTool.ToolName, trace.Name);
+        Assert.True(trace.Ok);
+        Assert.Equal("Teuta Ganna", provider.LastQuery);
+        Assert.Equal(2, chatProvider.Requests.Count);
+        Assert.Contains(
+            chatProvider.Requests[1].Messages,
+            message => message.Role == "tool"
+                && message.ToolCallId == WebSearchFallback.CallId
+                && message.Content.Contains("https://example.com/teuta", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            chatProvider.Requests[1].Messages,
+            message => message.Role == "assistant"
+                && message.Content.Contains("nepodařilo", StringComparison.Ordinal));
     }
 
     [Fact]

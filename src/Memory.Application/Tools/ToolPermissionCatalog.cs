@@ -9,17 +9,23 @@ public static class ToolPermissionCatalog
         Describe(
             ToolPermissionProfile.Safe,
             "Bezpečný",
-            "Jen vestavěné nástroje: čas a čtení paměti.",
+            "Jen vestavěné nástroje: čas, čtení paměti a webové vyhledávání.",
             enabled: true,
             [ToolTrust.Builtin],
-            [ToolCapability.Clock, ToolCapability.MemoryRead]),
+            [ToolCapability.Clock, ToolCapability.MemoryRead, ToolCapability.WebSearch, ToolCapability.WebRead]),
         Describe(
             ToolPermissionProfile.NetworkOnce,
             "Síť jednou",
             "Tento tah: jedno HTTP volání. OpenWebUI tento profil nedostane.",
             enabled: true,
             [ToolTrust.Builtin, ToolTrust.Untrusted],
-            [ToolCapability.Clock, ToolCapability.MemoryRead, ToolCapability.Network]),
+            [
+                ToolCapability.Clock,
+                ToolCapability.MemoryRead,
+                ToolCapability.WebSearch,
+                ToolCapability.WebRead,
+                ToolCapability.Network
+            ]),
         Describe(
             ToolPermissionProfile.Admin,
             "Admin",
@@ -29,6 +35,8 @@ public static class ToolPermissionCatalog
             [
                 ToolCapability.Clock,
                 ToolCapability.MemoryRead,
+                ToolCapability.WebSearch,
+                ToolCapability.WebRead,
                 ToolCapability.Network,
                 ToolCapability.FileSystem,
                 ToolCapability.Shell

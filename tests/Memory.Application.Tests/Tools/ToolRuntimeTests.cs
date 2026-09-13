@@ -236,4 +236,56 @@ public sealed class ToolRuntimeTests
         Assert.Equal(ToolAuditOutcome.Denied, store.ToolAuditLogs[1].Outcome);
         Assert.False(store.ToolAuditLogs[1].Invoked);
     }
+
+    [Fact]
+    public void Web_tools_get_a_longer_timeout()
+    {
+        Assert.Equal(
+            ToolRuntime.WebInvokeTimeout,
+            ToolRuntime.TimeoutFor(
+                new ToolDefinition(
+                    "web_search",
+                    "search",
+                    [],
+                    ToolTrust.Builtin,
+                    [ToolCapability.WebSearch])));
+        Assert.Equal(
+            ToolRuntime.WebInvokeTimeout,
+            ToolRuntime.TimeoutFor(
+                new ToolDefinition(
+                    "web_fetch",
+                    "fetch",
+                    [],
+                    ToolTrust.Builtin,
+                    [ToolCapability.WebRead])));
+        Assert.Equal(
+            ToolRuntime.InvokeTimeout,
+            ToolRuntime.TimeoutFor(
+                new ToolDefinition(
+                    "get_time",
+                    "clock",
+                    [],
+                    ToolTrust.Builtin,
+                    [ToolCapability.Clock])));
+    }
+
+    [Fact]
+    public async Task Default_turn_allows_builtin_web_search()
+    {
+        var search = new FakeTool(
+            new ToolDefinition(
+                "web_search",
+                "search",
+                [],
+                ToolTrust.Builtin,
+                [ToolCapability.WebSearch]),
+            "hits");
+        var runtime = TestToolRuntime.Create(new ToolRegistry([search]));
+
+        var result = await runtime.InvokeAsync(new ToolCall("c1", "web_search", "{}"), ToolContext.None);
+
+        Assert.True(result.Ok);
+        Assert.Equal("hits", result.Content);
+        Assert.True(search.Invoked);
+    }
 }

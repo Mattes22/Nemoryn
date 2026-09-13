@@ -134,6 +134,10 @@ docker compose up --build -d
 
 Otevři [http://localhost:5022/](http://localhost:5022/). V **Runtime** zkontroluj, že žije databáze i oba modely.
 
+> **Používáš Open WebUI?** Nepřeskoč vlastní hlavičky v
+> [nastavení Open WebUI](#open-webui). Nemoryn podle nich pozná uživatele
+> a konverzaci — bez nich persistentní paměť nedrží.
+
 V Dockeru je host databáze `postgres`, port **`5432`** (ne `5433`). `5433` je jen mapování na Mac.
 
 ```bash
@@ -143,14 +147,62 @@ docker compose down -v       # zastavit a smazat volume
 
 ## Open WebUI
 
-Admin → Settings → Connections → OpenAI:
+Jdi do:
+
+**Admin → Settings → Connections → OpenAI**
+
+Přidej Nemoryn jako OpenAI-compatible připojení:
 
 | Pole | Hodnota |
 |---|---|
 | API Base URL | `http://127.0.0.1:5022/v1` |
 | API Key | cokoliv, pokud je `NEMORYN_API_KEY` prázdný; jinak ten klíč |
 
-Chat model a URL Ollamy se nastavují v Nemoryn **Runtime**, ne v Open WebUI. Pak chatuješ jako dřív: Open WebUI volá Nemoryn, Nemoryn volá model.
+### Povinné hlavičky Open WebUI
+
+Pak v **Advanced** nastavení připojení přidej tyto hlavičky:
+
+```json
+{
+  "X-OpenWebUI-User-Id": "{{USER_ID}}",
+  "X-OpenWebUI-Chat-Id": "{{CHAT_ID}}"
+}
+```
+
+Tyto hlavičky jsou **povinné** pro persistentní paměť.
+
+`X-OpenWebUI-User-Id` dává Nemorynu stabilní identitu uživatele,
+`X-OpenWebUI-Chat-Id` identifikuje aktuální konverzaci. Díky tomu Nemoryn
+drží paměti u správného člověka a zároveň ví, ze kterého chatu pocházejí.
+
+Bez těchto hlaviček Nemoryn nedokáže spolehlivě rozlišit uživatele a
+konverzace, když requesty přijdou přes Open WebUI.
+
+Celé zapojení vypadá zhruba takto:
+
+```text
+Open WebUI
+   │
+   │ POST /v1/chat/completions
+   │
+   │ X-OpenWebUI-User-Id: <user>
+   │ X-OpenWebUI-Chat-Id: <conversation>
+   ▼
+Nemoryn
+   │
+   ├── identify user
+   ├── identify conversation
+   ├── retrieve relevant memories
+   └── build context
+   │
+   ▼
+Configured LLM
+```
+
+Chat model a URL Ollamy se nastavují v Nemoryn **Runtime**, ne v Open WebUI.
+
+Pak už chatuješ jako dřív: Open WebUI volá Nemoryn, Nemoryn vytáhne
+relevantní paměť a volá nastavený model.
 
 ## Tools Gateway
 
@@ -165,7 +217,7 @@ Oddělené od Memory Core. Připravené na Open WebUI, MCP i jiné agenty.
 - OpenAPI: [http://localhost:5022/openapi/tools.json](http://localhost:5022/openapi/tools.json)
 - Konzole: **Tools** → SearXNG Base URL
 
-Víc: [`docs/tools.md`](docs/tools.md)
+Víc: [`docs/tools.cs.md`](docs/tools.cs.md)
 
 ## Konzole
 
@@ -194,9 +246,9 @@ Teď: spolehlivá paměť, retrieval a nástroje.
 
 ## Dokumentace
 
-- [Docker](docs/docker.md)
-- [Open WebUI](docs/openwebui.md)
-- [Tools Gateway](docs/tools.md)
+- [Docker](docs/docker.cs.md)
+- [Open WebUI](docs/openwebui.cs.md)
+- [Tools Gateway](docs/tools.cs.md)
 
 ## Přispívání
 

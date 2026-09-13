@@ -21,6 +21,8 @@ public static class DependencyInjection
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<Memory.Application.Tools.ITool, GetTimeTool>();
         services.AddScoped<Memory.Application.Tools.ITool, SearchMemoriesTool>();
+        services.AddScoped<Memory.Application.Tools.ITool, WebSearchAgentTool>();
+        services.AddScoped<Memory.Application.Tools.ITool, WebFetchAgentTool>();
         services.AddScoped<Memory.Application.Tools.IToolRegistry, Memory.Application.Tools.ToolRegistry>();
         services.AddScoped<IToolAuditService, ToolAuditService>();
         services.AddScoped<IToolRuntime, ToolRuntime>();

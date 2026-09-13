@@ -134,6 +134,10 @@ docker compose up --build -d
 
 Öffne [http://localhost:5022/](http://localhost:5022/). Unter **Runtime** prüfen, ob Datenbank und beide Modelle leben.
 
+> **Open WebUI?** Überspring die Custom Headers in der
+> [Open-WebUI-Konfiguration](#open-webui) nicht. Nemoryn braucht sie, um
+> Benutzer und Konversation für persistente Erinnerung zu erkennen.
+
 In Docker ist der Datenbank-Host `postgres`, Port **`5432`** (nicht `5433`). `5433` ist nur das Mapping auf den Mac.
 
 ```bash
@@ -143,14 +147,64 @@ docker compose down -v       # stoppen und Volumes löschen
 
 ## Open WebUI
 
-Admin → Settings → Connections → OpenAI:
+Geh zu:
+
+**Admin → Settings → Connections → OpenAI**
+
+Füge Nemoryn als OpenAI-kompatible Verbindung hinzu:
 
 | Feld | Wert |
 |---|---|
 | API Base URL | `http://127.0.0.1:5022/v1` |
 | API Key | beliebig, wenn `NEMORYN_API_KEY` leer ist; sonst derselbe Schlüssel |
 
-Chat-Modell und Ollama-URL setzt du in Nemoryn **Runtime**, nicht in Open WebUI. Danach chattest du wie gewohnt: Open WebUI spricht mit Nemoryn, Nemoryn mit dem Modell.
+### Pflicht-Header für Open WebUI
+
+Öffne danach die **Advanced**-Einstellungen der Verbindung und füge diese Header hinzu:
+
+```json
+{
+  "X-OpenWebUI-User-Id": "{{USER_ID}}",
+  "X-OpenWebUI-Chat-Id": "{{CHAT_ID}}"
+}
+```
+
+Diese Header sind für persistente Erinnerung **pflicht**.
+
+`X-OpenWebUI-User-Id` gibt Nemoryn eine stabile Benutzeridentität,
+`X-OpenWebUI-Chat-Id` identifiziert die aktuelle Konversation. So bleiben
+Erinnerungen dem richtigen Benutzer zugeordnet und gleichzeitig der Chat
+nachvollziehbar, aus dem sie stammen.
+
+Ohne diese Header kann Nemoryn Benutzer und Konversationen nicht zuverlässig
+unterscheiden, wenn die Requests über Open WebUI kommen.
+
+Die Verbindung sieht grob so aus:
+
+```text
+Open WebUI
+   │
+   │ POST /v1/chat/completions
+   │
+   │ X-OpenWebUI-User-Id: <user>
+   │ X-OpenWebUI-Chat-Id: <conversation>
+   ▼
+Nemoryn
+   │
+   ├── identify user
+   ├── identify conversation
+   ├── retrieve relevant memories
+   └── build context
+   │
+   ▼
+Configured LLM
+```
+
+Chat-Modell und Ollama-URL setzt du in Nemoryn **Runtime**, nicht in
+Open WebUI.
+
+Danach chattest du wie gewohnt: Open WebUI spricht mit Nemoryn, Nemoryn
+holt die passende Erinnerung und spricht mit dem konfigurierten Modell.
 
 ## Tools Gateway
 
@@ -165,7 +219,7 @@ Unabhängig vom Memory Core. Gedacht für später Open WebUI, MCP und andere Age
 - OpenAPI: [http://localhost:5022/openapi/tools.json](http://localhost:5022/openapi/tools.json)
 - Konsole: **Tools** → SearXNG Base URL
 
-Details: [`docs/tools.md`](docs/tools.md)
+Details: [`docs/tools.de.md`](docs/tools.de.md)
 
 ## Konsole
 
@@ -194,9 +248,9 @@ Fokus jetzt: zuverlässiger Speicher, Retrieval und Tools.
 
 ## Dokumentation
 
-- [Docker](docs/docker.md)
-- [Open WebUI](docs/openwebui.md)
-- [Tools Gateway](docs/tools.md)
+- [Docker](docs/docker.de.md)
+- [Open WebUI](docs/openwebui.de.md)
+- [Tools Gateway](docs/tools.de.md)
 
 ## Mitwirken
 

@@ -6,6 +6,7 @@ internal sealed class ToolRuntime(IToolRegistry registry, IToolAuditService tool
 {
     public const int MaxArgumentChars = 4000;
     public static readonly TimeSpan InvokeTimeout = TimeSpan.FromSeconds(8);
+    public static readonly TimeSpan WebInvokeTimeout = TimeSpan.FromSeconds(20);
 
     public async Task<ToolResult> InvokeAsync(
         ToolCall call,
@@ -80,7 +81,7 @@ internal sealed class ToolRuntime(IToolRegistry registry, IToolAuditService tool
         }
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(InvokeTimeout);
+        timeout.CancelAfter(TimeoutFor(tool.Definition));
         try
         {
             var result = await tool.InvokeAsync(
@@ -115,6 +116,18 @@ internal sealed class ToolRuntime(IToolRegistry registry, IToolAuditService tool
                 new ToolResult(call.Id, name, false, $"Tool '{name}' failed: {exception.Message}"),
                 cancellationToken);
         }
+    }
+
+    internal static TimeSpan TimeoutFor(ToolDefinition? definition)
+    {
+        if (definition is not null
+            && definition.Capabilities.Any(capability =>
+                capability is ToolCapability.WebSearch or ToolCapability.WebRead))
+        {
+            return WebInvokeTimeout;
+        }
+
+        return InvokeTimeout;
     }
 
     private async Task<ToolResult> CompleteAsync(

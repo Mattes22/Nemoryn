@@ -147,6 +147,28 @@ public sealed class OpenAiCompatibleChatServiceTests
     }
 
     [Fact]
+    public async Task Complete_advertises_web_search_on_the_safe_profile()
+    {
+        var store = new FakeMemoryStore();
+        var chatProvider = new FakeChatCompletionProvider { Response = "Ahoj." };
+        var service = CreateService(
+            store,
+            chatProvider,
+            [
+                new GetTimeTool(TimeProvider.System),
+                new WebSearchAgentTool(new FakeWebSearchProvider())
+            ]);
+
+        var result = await service.CompleteAsync(
+            new OpenAiCompatibleChatCommand("matej", "openai-chat-1", "Ahoj", 8, 12));
+
+        Assert.Equal("Succeeded", result.Chat.Status);
+        Assert.Equal(ToolPermissionProfile.Safe, result.Chat.PermissionProfile);
+        Assert.Contains(chatProvider.LastRequest?.Tools ?? [], tool => tool.Name == WebSearchAgentTool.ToolName);
+        Assert.Empty(result.Chat.ToolTrace);
+    }
+
+    [Fact]
     public async Task Complete_passes_chat_model_to_the_provider()
     {
         var store = new FakeMemoryStore();

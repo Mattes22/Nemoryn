@@ -75,3 +75,23 @@ internal sealed class FakeWebSearchProvider : IWebSearchProvider
         return Task.FromResult(Result);
     }
 }
+
+internal sealed class FakeWebContentFetcher : IWebContentFetcher
+{
+    public Uri? LastUri { get; private set; }
+    public WebPageContent Result { get; set; } =
+        new("https://example.com", "Example", "text", 200, "text/html");
+    public Exception? Exception { get; set; }
+
+    public Task<WebPageContent> FetchAsync(Uri uri, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        LastUri = uri;
+        if (Exception is not null)
+        {
+            throw Exception;
+        }
+
+        return Task.FromResult(Result);
+    }
+}

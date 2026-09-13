@@ -12,7 +12,9 @@ public sealed class ToolPermissionCatalogTests
         Assert.Equal(ToolPermissionProfile.Safe, ToolPermissionCatalog.Default);
         Assert.Equal(ToolPermissionProfile.Safe, ToolPermissionCatalog.Normalize(null));
         Assert.Equal([ToolTrust.Builtin], safe.Trusts);
-        Assert.Equal([ToolCapability.Clock, ToolCapability.MemoryRead], safe.Capabilities);
+        Assert.Equal(
+            [ToolCapability.Clock, ToolCapability.MemoryRead, ToolCapability.WebSearch, ToolCapability.WebRead],
+            safe.Capabilities);
         Assert.DoesNotContain(ToolCapability.Network, safe.Capabilities);
     }
 
@@ -25,6 +27,8 @@ public sealed class ToolPermissionCatalogTests
         var state = ToolPermissionCatalog.Create(ToolPermissionProfile.NetworkOnce);
 
         Assert.Contains(ToolTrust.Untrusted, descriptor.Trusts);
+        Assert.Contains(ToolCapability.WebSearch, descriptor.Capabilities);
+        Assert.Contains(ToolCapability.WebRead, descriptor.Capabilities);
         Assert.Contains(ToolCapability.Network, descriptor.Capabilities);
         Assert.Equal(1, state.RemainingNetworkInvokes);
         Assert.True(state.TryConsumeNetwork());

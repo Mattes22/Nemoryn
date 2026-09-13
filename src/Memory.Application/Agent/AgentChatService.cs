@@ -177,6 +177,15 @@ internal sealed class AgentChatService(
                     chatModel),
                 cancellationToken);
             var calls = completion.ToolCalls ?? [];
+            var injectedFallback = false;
+            if (calls.Count == 0
+                && round == 0
+                && WebSearchFallback.TryCreateCall(advertised, userMessage, out var fallbackCall))
+            {
+                calls = [fallbackCall];
+                injectedFallback = true;
+            }
+
             if (calls.Count == 0)
             {
                 if (string.IsNullOrWhiteSpace(completion.Content))
@@ -189,7 +198,7 @@ internal sealed class AgentChatService(
 
             messages.Add(new ChatCompletionMessage(
                 "assistant",
-                completion.Content ?? string.Empty,
+                injectedFallback ? string.Empty : completion.Content ?? string.Empty,
                 ToolCalls: calls));
 
             foreach (var call in calls)
@@ -277,6 +286,10 @@ internal sealed class AgentChatService(
             .Append("You can call registered tools when they help. Available: ")
             .Append(names)
             .Append(". Never invent a tool result.");
+        if (tools.Any(tool => string.Equals(tool.Name, WebSearchAgentTool.ToolName, StringComparison.Ordinal)))
+        {
+            line.Append(" If the user asks to find or look up public information that is not in memory, call web_search before answering. Do not say you searched unless you called web_search.");
+        }
 
         var systemIndex = messages.FindIndex(message => message.Role == "system");
         if (systemIndex >= 0)

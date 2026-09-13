@@ -18,6 +18,7 @@ public sealed class AgentSystemPromptBuilderTests
         Assert.Contains(AgentSystemPromptBuilder.ContractVersion, prompt.Text);
         Assert.Contains(AgentSystemPromptBuilder.NoUnlistedFacts, prompt.Text);
         Assert.Contains(AgentSystemPromptBuilder.ToolMemoriesAreEvidence, prompt.Text);
+        Assert.Contains(AgentSystemPromptBuilder.WebResultsAreEvidence, prompt.Text);
         Assert.Contains(AgentSystemPromptBuilder.HideInternalStructure, prompt.Text);
         Assert.Contains(AgentSystemPromptBuilder.LatestUserWins, prompt.Text);
         Assert.Contains(AgentSystemPromptBuilder.DoNotClaimWrite, prompt.Text);

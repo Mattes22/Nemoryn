@@ -134,6 +134,10 @@ docker compose up --build -d
 
 Open [http://localhost:5022/](http://localhost:5022/). In **Runtime**, check that the database and both models are live.
 
+> **Using Open WebUI?** Do not skip the custom headers in the
+> [Open WebUI configuration](#open-webui). Nemoryn uses them to identify the
+> user and conversation for persistent memory.
+
 Inside Docker the database host is `postgres`, port **`5432`** (not `5433`). `5433` is only the mapping onto your Mac.
 
 ```bash
@@ -143,14 +147,64 @@ docker compose down -v       # stop and delete volumes
 
 ## Open WebUI
 
-Admin → Settings → Connections → OpenAI:
+Go to:
+
+**Admin → Settings → Connections → OpenAI**
+
+Add Nemoryn as an OpenAI-compatible connection:
 
 | Field | Value |
 |---|---|
 | API Base URL | `http://127.0.0.1:5022/v1` |
 | API Key | anything if `NEMORYN_API_KEY` is empty; otherwise that key |
 
-Chat model and Ollama URL live in Nemoryn **Runtime**, not in Open WebUI. After that, chat as usual: Open WebUI talks to Nemoryn, Nemoryn talks to the model.
+### Required Open WebUI headers
+
+Then open **Advanced** settings for the connection and add these headers:
+
+```json
+{
+  "X-OpenWebUI-User-Id": "{{USER_ID}}",
+  "X-OpenWebUI-Chat-Id": "{{CHAT_ID}}"
+}
+```
+
+These headers are **required** for persistent memory.
+
+`X-OpenWebUI-User-Id` gives Nemoryn a stable identity for the user, while
+`X-OpenWebUI-Chat-Id` identifies the current conversation. This allows Nemoryn
+to keep memories associated with the correct user while still tracking which
+conversation they originated from.
+
+Without these headers, Nemoryn cannot reliably distinguish users and
+conversations when requests come through Open WebUI.
+
+The final connection therefore looks roughly like this:
+
+```text
+Open WebUI
+   │
+   │ POST /v1/chat/completions
+   │
+   │ X-OpenWebUI-User-Id: <user>
+   │ X-OpenWebUI-Chat-Id: <conversation>
+   ▼
+Nemoryn
+   │
+   ├── identify user
+   ├── identify conversation
+   ├── retrieve relevant memories
+   └── build context
+   │
+   ▼
+Configured LLM
+```
+
+The chat model and Ollama URL are configured in Nemoryn **Runtime**, not in
+Open WebUI.
+
+After that, use Open WebUI normally: Open WebUI talks to Nemoryn, Nemoryn
+retrieves the relevant memory and talks to the configured model.
 
 ## Tools Gateway
 

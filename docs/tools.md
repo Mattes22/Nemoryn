@@ -1,23 +1,27 @@
 # Nemoryn Tools Gateway
 
-Samostatná tool vrstva vedle Memory Core. Klienti (Open WebUI, vlastní UI, MCP později) volají REST, ne Memory agent loop.
+[**English**](tools.md) · [Čeština](tools.cs.md) · [Deutsch](tools.de.md)
 
-OpenAPI jen pro tyto endpointy: `http://<host>:5022/openapi/tools.json`
+A separate tool layer next to Memory Core. Clients (Open WebUI, custom UI, MCP later) call REST, not the Memory agent loop.
 
-## Nástroje
+OpenAPI for these endpoints only: `http://<host>:5022/openapi/tools.json`
 
-| Nástroj | Capability | Účel |
+## Tools
+
+| Tool | Capability | Purpose |
 |---|---|---|
-| `web.search` | `web.search` | fulltext na internetu přes SearXNG |
-| `web.fetch` | `web.read` | jedna veřejná HTTP(S) stránka, vyčištěný text |
+| `web.search` | `web.search` | full-text web search via SearXNG |
+| `web.fetch` | `web.read` | one public HTTP(S) page, cleaned text |
 
-`web.fetch` není obecný HTTP client. Loopback, link-local, RFC1918 a lokální IPv6 jsou blokované. Redirect na privátní adresu taky. Capability `network.local` tento tool nepoužívá.
+`web.fetch` is not a general HTTP client. Loopback, link-local, RFC1918, and local IPv6 are blocked. Redirects to a private address too. This tool does not use the `network.local` capability.
 
-## Konfigurace SearXNG
+Chat through Open WebUI `/v1` uses the same SearXNG search as the agent tools `web_search` / `web_fetch` (Safe profile). This REST gateway is for other callers.
 
-V konzoli: **Tools → SearXNG → Base URL**. Platí hned a po uložení i po restartu (`memory-tools.connection.json`).
+## SearXNG configuration
 
-Stejné hodnoty jdou i přes `appsettings.json` / env, dokud je konzole nepřepíše:
+In the console: **Tools → SearXNG → Base URL**. Takes effect immediately and after save also after a restart (`memory-tools.connection.json`).
+
+The same values can go through `appsettings.json` / env until the console overwrites them:
 
 ```json
 {
@@ -33,11 +37,11 @@ Stejné hodnoty jdou i přes `appsettings.json` / env, dokud je konzole nepřep�
 }
 ```
 
-Docker: `TOOLS_SEARXNG_BASE_URL=http://host.docker.internal:8080` v `.env` (SearXNG na hostiteli). Uvnitř kódu žádná URL není.
+Docker: `TOOLS_SEARXNG_BASE_URL=http://host.docker.internal:8080` in `.env` (SearXNG on the host). There is no URL hardcoded in the source.
 
-SearXNG musí vracet JSON (`format=json`). Bez `BaseUrl` `web.search` skončí chybou poskytovatele.
+SearXNG must return JSON (`format=json`). Without `BaseUrl`, `web.search` fails with a provider error.
 
-## Endpointy
+## Endpoints
 
 ```text
 GET  /api/v1/tools
@@ -46,16 +50,16 @@ POST /api/v1/tools/web.fetch/execute
 POST /api/v1/tools/{toolName}/execute
 ```
 
-Hlavičky:
+Headers:
 
-- `X-Nemoryn-Caller` — kdo volá (audit)
-- `X-Nemoryn-Capabilities` — volitelný subset; vždy se protne se serverovým `Tools:DefaultCapabilities`
+- `X-Nemoryn-Caller` — who is calling (audit)
+- `X-Nemoryn-Capabilities` — optional subset; always intersected with the server `Tools:DefaultCapabilities`
 
-Bez hlavičky capabilities platí `DefaultCapabilities`.
+Without the capabilities header, `DefaultCapabilities` applies.
 
 ## curl
 
-Seznam:
+List:
 
 ```bash
 curl -s http://127.0.0.1:5022/api/v1/tools
@@ -79,7 +83,7 @@ curl -s -X POST http://127.0.0.1:5022/api/v1/tools/web.fetch/execute \
   -d '{"url":"https://example.com"}'
 ```
 
-SSRF kontrola (má vrátit 400):
+SSRF check (should return 400):
 
 ```bash
 curl -s -X POST http://127.0.0.1:5022/api/v1/tools/web.fetch/execute \
@@ -87,6 +91,6 @@ curl -s -X POST http://127.0.0.1:5022/api/v1/tools/web.fetch/execute \
   -d '{"url":"http://127.0.0.1/"}'
 ```
 
-## MCP a Open WebUI
+## MCP and Open WebUI
 
-Ještě není. Stejný `IToolExecutor` půjde obalit MCP serverem. Open WebUI External Tools / OpenAPI server má mířit na `/openapi/tools.json`, ne na celé `/openapi/v1.json` (to obsahuje Memory API).
+Not yet. The same `IToolExecutor` can later be wrapped as an MCP server. Open WebUI External Tools / OpenAPI server should point at `/openapi/tools.json`, not at the full `/openapi/v1.json` (that includes the Memory API).

@@ -13,7 +13,7 @@ public sealed record ToolContext(
     public static IReadOnlyList<ToolTrust> DefaultAllowedTrusts { get; } = [ToolTrust.Builtin];
 
     public static IReadOnlyList<ToolCapability> DefaultAllowedCapabilities { get; } =
-        [ToolCapability.Clock, ToolCapability.MemoryRead];
+        [ToolCapability.Clock, ToolCapability.MemoryRead, ToolCapability.WebSearch, ToolCapability.WebRead];
 
     public static ToolContext None { get; } = new(Guid.Empty, string.Empty, MemoryPolicyKind.Balanced);
 

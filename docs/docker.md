@@ -1,34 +1,36 @@
-# Nemoryn v Dockeru
+# Nemoryn in Docker
 
-Server i Postgres běží jako dvě služby. API se spustí samo, jakmile je databáze zdravá.
+[**English**](docker.md) · [Čeština](docker.cs.md) · [Deutsch](docker.de.md)
 
-## Spuštění
+The server and Postgres run as two services. The API starts on its own once the database is healthy.
+
+## Start
 
 ```bash
 cd V2.0
 cp .env.example .env
-# uprav POSTGRES_PASSWORD (výchozí `change-me` nenechávej) a MEMORY_AI_BASE_URL
+# set POSTGRES_PASSWORD (do not leave the default `change-me`) and MEMORY_AI_BASE_URL
 docker compose up --build -d
 ```
 
-Konzole: `http://<host>:5022/`  
+Console: `http://<host>:5022/`  
 Open WebUI model endpoint: `http://<host>:5022/v1`
 
-Data zůstanou ve volume `nemoryn-pgdata` (Postgres) a `nemoryn-data` (uložené AI/DB připojení z konzole).
+Data stays in volume `nemoryn-pgdata` (Postgres) and `nemoryn-data` (AI/DB connections saved from the console).
 
-## Databáze
+## Database
 
-Compose založí Postgres s `pgvector`. Z kontejneru Nemoryn je host `postgres`, port `5432`. Na hostitele se mapuje `5433` (`POSTGRES_PORT`), protože `5432` často zabírá lokální Postgres. Změna `POSTGRES_PORT` se týká jen přístupu z Macu; Nemoryn pořád volá `postgres:5432` uvnitř sítě.
+Compose creates Postgres with `pgvector`. From the Nemoryn container the host is `postgres`, port `5432`. Onto the host it maps `5433` (`POSTGRES_PORT`), because `5432` is often taken by a local Postgres. Changing `POSTGRES_PORT` only affects access from the Mac; Nemoryn still calls `postgres:5432` inside the network.
 
-V konzoli **Runtime → Databáze** můžeš přepnout na jiný Postgres (existující server, `host.docker.internal`, LAN IP). Heslo se v GET nevrací; prázdné pole nechá stávající. Platí hned a zapíše se do `/app/data/memory-db.connection.json`.
+In the console **Runtime → Database** you can switch to another Postgres (existing server, `host.docker.internal`, LAN IP). The password is not returned in GET; an empty field keeps the current one. It takes effect immediately and is written to `/app/data/memory-db.connection.json`.
 
-`localhost` uvnitř kontejneru není Postgres na hostiteli. Pro DB na stejném stroji použij `host.docker.internal`.
+`localhost` inside the container is not Postgres on the host. For a DB on the same machine use `host.docker.internal`.
 
 ## AI model
 
-Ollama/OpenAI zůstává mimo Compose. Base URL a modely nastav v Runtime, nebo v `.env` (`MEMORY_AI_BASE_URL`). Z Dockeru na LAN obvykle funguje přímo IP (např. `http://192.168.1.2:11434`). Model na hostiteli: `http://host.docker.internal:11434`.
+Ollama/OpenAI stays outside Compose. Set the base URL and models in Runtime, or in `.env` (`MEMORY_AI_BASE_URL`). From Docker onto the LAN a direct IP usually works (e.g. `http://192.168.1.2:11434`). Model on the host: `http://host.docker.internal:11434`.
 
-## Publikace image
+## Publishing the image
 
 ```bash
 docker compose build
@@ -36,12 +38,12 @@ docker tag nemoryn:local <registry>/nemoryn:latest
 docker push <registry>/nemoryn:latest
 ```
 
-Na cílovém serveru stačí `docker-compose.yml`, `.env` a image. Služba `nemoryn` pak místo `build` použij `image: <registry>/nemoryn:latest`.
+On the target server you only need `docker-compose.yml`, `.env`, and the image. For the `nemoryn` service then use `image: <registry>/nemoryn:latest` instead of `build`.
 
-## Zastavení
+## Stop
 
 ```bash
 docker compose down
 ```
 
-Volume smažeš jen s `-v` — tím přijdeš o paměti v Postgresu.
+Volumes are removed only with `-v` — that deletes memories in Postgres.
